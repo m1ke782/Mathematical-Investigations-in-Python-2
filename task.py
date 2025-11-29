@@ -68,6 +68,27 @@ class ProblemInstance :
 
         # return the random solution
         return S
+    
+    def random_tweak(self, S) : 
+        # copy the solution
+        new_S = [s.copy() for s in S]
+
+        # chose a client at random to move
+        carer = random.randint(0,self.n1-1)
+        client = random.choice(new_S[carer])
+
+        # find a carer which can accomodate this client
+        possible_new_carers = []
+        for i in range(self.n1) : 
+            if i == carer or len(new_S[i]) <= self.m : 
+                possible_new_carers.append(i)
+
+        # remove the client from the old carer, and add it randomly somwhere to a new one
+        new_S[carer].remove(client)
+        new_carer = random.choice(possible_new_carers)
+        new_S[new_carer].insert(random.randint(0,len(new_S[new_carer])), client)
+
+        return new_S
             
 
     def draw(self, S=[]) : 
