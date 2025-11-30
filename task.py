@@ -74,14 +74,20 @@ class ProblemInstance :
         # copy the solution
         new_S = [s.copy() for s in S]
 
-        # chose a client at random to move
-        carer = random.randint(0,self.n1-1)
-        client = random.choice(new_S[carer])
+        # choose a client to move
+        client = random.randint(self.n1,self.n1+self.n2)
+
+        # find the carer responsible for this client
+        carer = None
+        for i in range(self.n1) :
+            if client in S[i] : 
+                carer = i
+                break
 
         # find a carer which can accomodate this client
         possible_new_carers = []
         for i in range(self.n1) : 
-            if i == carer or len(new_S[i]) <= self.m : 
+            if i == carer or len(new_S[i]) < self.m : 
                 possible_new_carers.append(i)
 
         # remove the client from the old carer, and add it randomly somwhere to a new one
@@ -111,7 +117,7 @@ class ProblemInstance :
             plt.text(self.nodes[i][0], self.nodes[i][1], "v"+str(i), color="g")
 
         # draw all of the client nodes in red
-        for i in range(self.n1, self.n2) : 
+        for i in range(self.n1, self.n1+self.n2) : 
             plt.plot(self.nodes[i][0], self.nodes[i][1], "ro")
             plt.text(self.nodes[i][0], self.nodes[i][1], "v"+str(i), color="g")
 
