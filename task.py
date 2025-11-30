@@ -108,10 +108,12 @@ class ProblemInstance :
         # draw all of the carer nodes in black
         for i in range(self.n1) : 
             plt.plot(self.nodes[i][0], self.nodes[i][1], "ko")
+            plt.text(self.nodes[i][0], self.nodes[i][1], "v"+str(i), color="g")
 
         # draw all of the client nodes in red
-        for i in range(self.n2) : 
-            plt.plot(self.nodes[self.n1+i][0], self.nodes[self.n1+i][1], "ro")
+        for i in range(self.n1, self.n2) : 
+            plt.plot(self.nodes[i][0], self.nodes[i][1], "ro")
+            plt.text(self.nodes[i][0], self.nodes[i][1], "v"+str(i), color="g")
 
         # show the figure
         plt.show()
