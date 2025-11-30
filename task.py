@@ -34,24 +34,25 @@ class ProblemInstance :
             # return this data as a problem instance object
             return ProblemInstance(n1, n2, m, nodes, distance_matrix)
         
-    def length_of_solution(self, S) : 
+    def cost(self, S) : 
         # keep track of the total length
         length = 0
 
-        # for each route s in S
-        for s in S : 
-            # for every node in s
-            for i in range(len(s)) :   
-                # find the next node from this one, and add the distance from this node to the next one 
-                next = (i+1)%len(s)
-                length += self.distance_matrix[s[i]][s[next]]
+        # for each carer
+        for carer in range(self.n1) :
+            # add lengths for each client the carer visits
+            last = carer
+            for client in S[carer] : 
+                length += self.distance_matrix[last][client]
+                last = client
+            # add the final length for the carer to go back home
+            length += self.distance_matrix[last][carer]
 
-        # return the total length
         return length
     
     def random_solution(self) : 
-        # initialise n1 routes, where each carer starts at their own home
-        S = [[i] for i in range(self.n1)]
+        # initialise n1 empty routes
+        S = [[] for i in range(self.n1)]
 
         # keep track of which carers are still available for more appointments (they have less than m visits schedules)
         available_carers = list(range(0,self.n1))
@@ -62,8 +63,8 @@ class ProblemInstance :
             carer = random.choice(available_carers)
             S[carer].append(i)
 
-            # if adding this client makes the carer have m clients (ie len(s) >= m+1), then remove this carer from the list of available carers
-            if len(S[carer]) > self.m : 
+            # if adding this client makes the carer have m clients (ie len(s) >= m), then remove this carer from the list of available carers
+            if len(S[carer]) >= self.m : 
                 available_carers.remove(carer)
 
         # return the random solution
@@ -94,13 +95,15 @@ class ProblemInstance :
     def draw(self, S=[]) : 
         plt.figure()
 
-        # for each route...
-        for s in S : 
-            # for each node in this route...
-            for i in range(len(s)) : 
-                # draw a blue line from this node to the next node in the route
-                next = (i+1)%len(s)
-                plt.plot([self.nodes[s[i]][0], self.nodes[s[next]][0]], [self.nodes[s[i]][1], self.nodes[s[next]][1]], "b")
+        # for each carer
+        for carer in range(self.n1) :
+            # draw lines from the last client to the next one
+            last = carer
+            for client in S[carer] : 
+                plt.plot([self.nodes[last][0], self.nodes[client][0]], [self.nodes[last][1], self.nodes[client][1]], "b")
+                last = client
+            # draw the final line going back to the start
+            plt.plot([self.nodes[last][0], self.nodes[carer][0]], [self.nodes[last][1], self.nodes[carer][1]], "b")
 
         # draw all of the carer nodes in black
         for i in range(self.n1) : 
