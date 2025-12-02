@@ -75,7 +75,7 @@ class ProblemInstance :
         new_S = [s.copy() for s in S]
 
         # choose a client to move
-        client = random.randint(self.n1,self.n1+self.n2)
+        client = random.randint(self.n1,self.n1+self.n2-1)
 
         # find the carer responsible for this client
         carer = None
@@ -83,6 +83,7 @@ class ProblemInstance :
             if client in S[i] : 
                 carer = i
                 break
+            
 
         # find a carer which can accomodate this client
         possible_new_carers = []
@@ -96,6 +97,34 @@ class ProblemInstance :
         new_S[new_carer].insert(random.randint(0,len(new_S[new_carer])), client)
 
         return new_S
+    
+    def all_tweaks(self, S) :
+        # keep track of all of the tweaks
+        tweaks = []
+        
+        for client in range(self.n1, self.n1+self.n2-1) : 
+            # find the carer responsible for this client
+            carer = None
+            for i in range(self.n1) :
+                if client in S[i] : 
+                    carer = i
+                    break
+    
+            # find a carer which can accomodate this client
+            possible_new_carers = []
+            for i in range(self.n1) : 
+                if i == carer or len(S[i]) < self.m : 
+                    possible_new_carers.append(i)
+    
+            # remove the client from the old carer, and add it randomly somwhere to a new one
+            for new_carer in possible_new_carers : 
+                for position in range(len(S[new_carer])) : 
+                    new_S = [s.copy() for s in S]
+                    new_S[carer].remove(client)
+                    new_S[new_carer].insert(position, client)
+                    tweaks.append(new_S)
+                    
+        return tweaks
             
 
     def draw(self, S=[]) : 
@@ -123,3 +152,196 @@ class ProblemInstance :
 
         # show the figure
         plt.show()
+        
+    def basic_local_search(self, trials) : 
+        # start with a random solution
+        solution = self.random_solution()
+        cost = self.cost(solution)
+        
+        # keep track of the cost over many iterations
+        cost_over_iterations = []
+        
+        # many many times...
+        for i in range(trials) : 
+            # find a random neighbour, and compare its cost to the 
+            random_neighbour = self.random_tweak(solution)
+            random_neighbour_cost = self.cost(random_neighbour)
+        
+            # if it has a lower cost, keep it
+            if random_neighbour_cost < cost : 
+                solution = random_neighbour
+                cost = random_neighbour_cost
+                
+            # add this cost to our graph
+            cost_over_iterations.append(cost)
+        
+        # print the output
+        print("We found the solution : ", solution)
+        print("Its solution has cost : ", cost)
+        
+        # draw the solution
+        self.draw(solution)
+        
+        # draw the cost against iterations
+        plt.figure()
+        plt.plot(cost_over_iterations)
+        plt.show()
+        
+    def mutliple_basic_local_search(self, trials, restarts) : 
+        # keep track of the best solution
+        best_solution = None
+        best_cost = None
+        
+        # keep track of the cost over many iterations
+        cost_over_iterations = []
+        
+        # many many times...
+        for j in range(restarts) : 
+            # start with a random solution
+            solution = self.random_solution()
+            cost = self.cost(solution)
+            
+            for i in range(trials) : 
+                # find a random neighbour, and compare its cost to the 
+                random_neighbour = self.random_tweak(solution)
+                random_neighbour_cost = self.cost(random_neighbour)
+            
+                # if it has a lower cost, keep it
+                if random_neighbour_cost < cost : 
+                    solution = random_neighbour
+                    cost = random_neighbour_cost
+                
+            # change the best solution if this local optimum
+            if best_cost == None or cost < best_cost :
+                best_solution = solution
+                best_cost = cost
+                
+            # add this cost to our graph
+            cost_over_iterations.append(best_cost)
+        
+        # print the output
+        print("We found the solution, : ", best_solution)
+        print("Its solution has cost : ", best_cost)
+        
+        # draw the solution
+        self.draw(best_solution)
+        
+        # draw the cost against iterations
+        plt.figure()
+        plt.plot(cost_over_iterations)
+        plt.show()
+        
+    def best_random_neighbour(self) : 
+        # start with a random solution
+        solution = self.random_solution()
+        cost = self.cost(solution)
+        
+        # keep track of the cost over many iterations
+        cost_over_iterations = []
+        
+        # many many times...
+        while True : 
+            # find all neighbours of the current solution
+            all_neighbours = self.all_tweaks(solution)
+            
+            # keep track of the best neighbour
+            best_neighbour = None
+            best_neighbour_cost = None
+            
+            # find the best neighbour
+            for neighbour in all_neighbours : 
+                this_neighbour_cost = self.cost(neighbour)
+                if best_neighbour_cost == None or this_neighbour_cost < best_neighbour_cost :
+                    best_neighbour = neighbour
+                    best_neighbour_cost = this_neighbour_cost
+            
+            # terminate if the best neighbour doesn't exist or is worse than the current one
+            if best_neighbour_cost == None or best_neighbour_cost >= cost :
+                break
+            
+            # otherwise, move to this neighbour
+            solution = best_neighbour
+            cost = best_neighbour_cost
+            cost_over_iterations.append(cost)
+            
+        # print the output
+        print("We found the solution : ", solution)
+        print("Its solution has cost : ", cost)
+            
+        # draw the solution
+        self.draw(solution)
+        
+        # draw the cost against iterations
+        plt.figure()
+        plt.plot(cost_over_iterations)
+        plt.show()
+        
+    def tabu_search(self, trials) :
+        # keep track of the best solution
+        best_solution = None
+        best_cost = None
+        
+        # start with a random solution
+        solution = self.random_solution()
+        cost = self.cost(solution)
+        
+        # start with a list of banned solutions
+        banned_solutions = set()
+        
+        # keep track of the cost against iterations
+        cost_over_iterations = []
+        
+        # many many times...
+        for i in range(trials) : 
+            # find all neighbours of the current solution
+            all_neighbours = self.all_tweaks(solution)
+            
+            # keep track of the best neighbour
+            best_neighbour = None
+            best_neighbour_cost = None
+            
+            # find the best non-baned neighbour
+            for neighbour in all_neighbours : 
+                # ignore banned neighbour
+                if str(neighbour) in banned_solutions : 
+                    continue
+                
+                this_neighbour_cost = self.cost(neighbour)
+                if best_neighbour_cost == None or this_neighbour_cost < best_neighbour_cost :
+                    best_neighbour = neighbour
+                    best_neighbour_cost = this_neighbour_cost
+            
+            # ban the current solution
+            banned_solutions.add(str(solution))
+            
+            # otherwise, move to this neighbour
+            solution = best_neighbour
+            cost = best_neighbour_cost
+            
+            # keep track of the best solution
+            if best_cost == None or cost < best_cost : 
+                best_solution = solution
+                best_cost = cost
+                
+            # keep track of the cost per iterations
+            cost_over_iterations.append(best_cost)
+            
+            
+        # print the output
+        print("We found the solution : ", best_solution)
+        print("Its solution has cost : ", best_cost)
+             
+        # draw the solution
+        self.draw(best_solution)
+         
+        # draw the cost against iterations
+        plt.figure()
+        plt.plot(cost_over_iterations)
+        plt.show()
+        
+        
+        
+        
+
+p = ProblemInstance.from_file("prob1.txt")
+p.tabu_search(10000)
