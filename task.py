@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import random
+import math
 
 class ProblemInstance : 
     def __init__(self, n1, n2, m, nodes, distance_matrix) : 
@@ -400,6 +401,48 @@ class ProblemInstance :
         # draw the solution
         self.draw(best_solution)
          
+        # draw the cost against iterations
+        plt.figure()
+        plt.plot(cost_over_iterations)
+        plt.show()
+
+    def simulated_annealing(self, trials, P) : 
+        # keep track of the best solution
+        best_solution = None
+        best_cost = None
+
+        # start with a random solution
+        solution = self.random_solution()
+        cost = self.cost(solution)
+        
+        # keep track of the cost over many iterations
+        cost_over_iterations = []
+        
+        # many many times...
+        for i in range(trials) : 
+            # find all neighbours and their weighted probabilities
+            neighbours = self.all_tweaks(solution)
+            weights = P([self.cost(neighbour) for neighbour in neighbours])
+
+            # select one at random with these weights
+            solution = random.choices(neighbours, weights)[0]
+            cost = p.cost(solution)
+                
+            # update the best solution
+            if best_cost == None or cost < best_cost : 
+                best_cost = cost
+                best_solution = solution
+
+            # add this cost to our graph
+            cost_over_iterations.append(best_cost)
+        
+        # print the output
+        print("We found the solution : ", best_solution)
+        print("Its solution has cost : ", best_cost)
+        
+        # draw the solution
+        self.draw(best_solution)
+        
         # draw the cost against iterations
         plt.figure()
         plt.plot(cost_over_iterations)
