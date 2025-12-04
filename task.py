@@ -150,6 +150,9 @@ class ProblemInstance :
             plt.plot(self.nodes[i][0], self.nodes[i][1], "ro")
             plt.text(self.nodes[i][0], self.nodes[i][1], "v"+str(i), color="g")
 
+        # add a title
+        plt.title("Cost : " + str(self.cost(S)))
+
         # show the figure
         plt.show()
         
@@ -211,7 +214,7 @@ class ProblemInstance :
                     solution = random_neighbour
                     cost = random_neighbour_cost
                 
-            # change the best solution if this local optimum
+            # change the best solution if this solution is better
             if best_cost == None or cost < best_cost :
                 best_solution = solution
                 best_cost = cost
@@ -231,7 +234,7 @@ class ProblemInstance :
         plt.plot(cost_over_iterations)
         plt.show()
         
-    def best_random_neighbour(self) : 
+    def best_neighbour(self) : 
         # start with a random solution
         solution = self.random_solution()
         cost = self.cost(solution)
@@ -270,6 +273,63 @@ class ProblemInstance :
             
         # draw the solution
         self.draw(solution)
+        
+        # draw the cost against iterations
+        plt.figure()
+        plt.plot(cost_over_iterations)
+        plt.show()
+
+    def multiple_best_neighbour(self, restarts) : 
+        # keep track of the best solution
+        best_solution = None
+        best_cost = None
+        
+        # keep track of the cost over many iterations
+        cost_over_iterations = []
+        
+        # many many times...
+        for i in range(restarts) : 
+            # get a random solution
+            solution = self.random_solution()
+            cost = self.cost(solution)
+
+            while True : 
+                # find all neighbours of the current solution
+                all_neighbours = self.all_tweaks(solution)
+                
+                # keep track of the best neighbour
+                best_neighbour = None
+                best_neighbour_cost = None
+                
+                # find the best neighbour
+                for neighbour in all_neighbours : 
+                    this_neighbour_cost = self.cost(neighbour)
+                    if best_neighbour_cost == None or this_neighbour_cost < best_neighbour_cost :
+                        best_neighbour = neighbour
+                        best_neighbour_cost = this_neighbour_cost
+                
+                # terminate if the best neighbour doesn't exist or is worse than the current one
+                if best_neighbour_cost == None or best_neighbour_cost >= cost :
+                    break
+                
+                # otherwise, move to this neighbour
+                solution = best_neighbour
+                cost = best_neighbour_cost
+
+                # change the best solution if this solution is better
+                if best_cost == None or cost < best_cost :
+                    best_solution = solution
+                    best_cost = cost
+
+                # add this cost to our graph
+                cost_over_iterations.append(best_cost)
+            
+        # print the output
+        print("We found the solution : ", best_solution)
+        print("Its solution has cost : ", best_cost)
+            
+        # draw the solution
+        self.draw(best_solution)
         
         # draw the cost against iterations
         plt.figure()
@@ -338,10 +398,3 @@ class ProblemInstance :
         plt.figure()
         plt.plot(cost_over_iterations)
         plt.show()
-        
-        
-        
-        
-
-p = ProblemInstance.from_file("prob1.txt")
-p.tabu_search(10000)
