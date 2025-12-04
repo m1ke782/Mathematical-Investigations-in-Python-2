@@ -101,29 +101,35 @@ class ProblemInstance :
     def all_tweaks(self, S) :
         # keep track of all of the tweaks
         tweaks = []
-        
-        for client in range(self.n1, self.n1+self.n2-1) : 
-            # find the carer responsible for this client
-            carer = None
-            for i in range(self.n1) :
-                if client in S[i] : 
-                    carer = i
-                    break
-    
-            # find a carer which can accomodate this client
-            possible_new_carers = []
-            for i in range(self.n1) : 
-                if i == carer or len(S[i]) < self.m : 
-                    possible_new_carers.append(i)
-    
-            # remove the client from the old carer, and add it randomly somwhere to a new one
-            for new_carer in possible_new_carers : 
-                for position in range(len(S[new_carer])) : 
-                    new_S = [s.copy() for s in S]
-                    new_S[carer].remove(client)
-                    new_S[new_carer].insert(position, client)
-                    tweaks.append(new_S)
-                    
+
+        # for every carer
+        for carer in range(self.n1) : 
+            # for each client this carer cares for
+            for original_client_position in range(len(S[carer])) : 
+                # for each carer
+                for new_carer in range(self.n1) : 
+                    # ignore if this carer can't take on another client
+                    if new_carer != carer and len(S[new_carer]) >= self.m : 
+                        continue
+
+                    for new_client_position in range(len(S[new_carer])) :
+                        # not an interesting tweak
+                        if new_carer == carer and original_client_position == new_client_position : 
+                            continue
+
+                        # create a new empty route
+                        new_S = [s.copy() for s in S]
+
+                        # remove the client from its old position
+                        client = new_S[carer][original_client_position]
+                        del new_S[carer][original_client_position]
+
+                        # add the client to its new position
+                        new_S[new_carer].insert(new_client_position, client)
+
+                        # add the tweak
+                        tweaks.append(new_S)
+                
         return tweaks
             
 
