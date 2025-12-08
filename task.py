@@ -40,22 +40,26 @@ class ProblemInstance :
 
             # return this data as a problem instance object
             return ProblemInstance(n1, n2, m, nodes, distance_matrix)
-        
-    def cost(self, S) : 
-        # keep track of the total length
+
+    def length_of_route(self, S, carer) : 
+        # keep track of the length of this route
         length = 0
 
-        # for each carer
-        for carer in range(self.n1) :
-            # add lengths for each client the carer visits
-            last = carer
-            for client in S[carer] : 
-                length += self.distance_matrix[last][client]
-                last = client
-            # add the final length for the carer to go back home
-            length += self.distance_matrix[last][carer]
+        # add lengths for each client the carer visits
+        last = carer
+        for client in S[carer] : 
+            length += self.distance_matrix[last][client]
+            last = client
 
+        # add the final length for the carer to go back home
+        length += self.distance_matrix[last][carer]
+
+        # return the length of this route
         return length
+
+        
+    def cost(self, S) : 
+        return sum(self.length_of_route(S, i) for i in range(self.n1))
     
     def random_solution(self) : 
         # initialise n1 empty routes
@@ -105,7 +109,7 @@ class ProblemInstance :
 
         return new_S
     
-    def all_tweaks(self, S) :
+    def all_tweaks(self, S, costs=False) :
         # keep track of all of the tweaks
         tweaks = []
 
@@ -134,8 +138,16 @@ class ProblemInstance :
                         # add the client to its new position
                         new_S[new_carer].insert(new_client_position, client)
 
-                        # add the tweak
-                        tweaks.append(new_S)
+                        # add the cost if the user asks for it
+                        if costs : 
+                            if new_carer == carer : 
+                                tweaks.append((new_S, self.length_of_route(new_S, carer) - self.length_of_route(S, carer)))
+                            else : 
+                                tweaks.append((new_S, self.length_of_route(new_S, carer) + self.length_of_route(new_S, new_carer) - self.length_of_route(S, carer) - self.length_of_route(S, new_carer)))
+
+                        # otherwise, just add the tweak
+                        else : 
+                            tweaks.append(new_S)
                 
         return tweaks
             
@@ -510,8 +522,15 @@ class ProblemInstance :
         plt.plot(cost_over_iterations)
         plt.show()
 
-p = ProblemInstance.from_file("prob2.txt")
-p.mutliple_basic_local_search(10000, 500)
+p = ProblemInstance.from_file("prob1.txt")
+S = p.random_solution()
+cost = p.cost(S)
+S_star = p.all_tweaks(S, True)
+
+for Sp,costp in S_star : 
+    print(p.cost(Sp)-( costp+cost))
+
+#p.mutliple_basic_local_search(10000, 500)
 
 # We found the solution :  [[67, 33, 75, 93, 24, 50, 66, 16, 57, 23], [13, 62, 60, 72, 61, 46, 51, 78, 73, 20], [59, 90, 18, 92, 28, 25, 14, 34, 82, 74], [94, 55, 76, 84, 79, 53, 85, 98, 37, 11], [69, 45, 22, 48, 27, 49, 63, 58, 19, 31], [65, 86, 26, 35, 87, 41, 68, 38, 44], [12, 70, 42, 99, 96], [10, 77, 64, 83, 17, 32, 88], [15, 91, 30, 71, 43, 52, 47, 21, 80], [36, 89, 56, 40, 81, 39, 29, 97, 95, 54]]
 # Its solution has cost :  12.604199999999999
