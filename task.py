@@ -245,10 +245,10 @@ class ProblemInstance :
 
         return best_solution, best_cost, cost_over_iterations
         
-    def best_neighbour(self, solution, cost) : 
+    def best_neighbour(self, start_from=None) : 
         # start with a random solution
-        #solution = self.random_solution()
-        #cost = self.cost(solution)
+        solution = start_from if start_from != None else self.random_solution()
+        cost = self.cost(solution)
         
         # keep track of the cost over many iterations
         cost_over_iterations = []
@@ -568,7 +568,7 @@ def main() :
 
     # run the task with all arguments
     tasks[task]["func"](*args)
-    
+
 if __name__ == "__main__" : 
     main()
 
