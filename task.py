@@ -1,6 +1,12 @@
 import matplotlib.pyplot as plt
+import tqdm
 import random
 import math
+import scipy
+
+
+def convergence_speed(cost) : 
+    return -scipy.stats.linregress([math.log(i) for i in range(1,len(cost)+1)], [math.log(cost[i-1]) for i in range(1,len(cost)+1)]).slope
 
 class ProblemInstance : 
     def __init__(self, n1, n2, m, nodes, distance_matrix) : 
@@ -188,6 +194,7 @@ class ProblemInstance :
         # print the output
         print("We found the solution : ", solution)
         print("Its solution has cost : ", cost)
+        print("It converges with speed : ", convergence_speed(cost_over_iterations))
         
         # draw the solution
         self.draw(solution)
@@ -232,6 +239,7 @@ class ProblemInstance :
         # print the output
         print("We found the solution, : ", best_solution)
         print("Its solution has cost : ", best_cost)
+        print("It converges with speed : ", convergence_speed(cost_over_iterations))
         
         # draw the solution
         self.draw(best_solution)
@@ -277,6 +285,7 @@ class ProblemInstance :
         # print the output
         print("We found the solution : ", solution)
         print("Its solution has cost : ", cost)
+        print("It converges with speed : ", convergence_speed(cost_over_iterations))
             
         # draw the solution
         self.draw(solution)
@@ -295,7 +304,7 @@ class ProblemInstance :
         cost_over_iterations = []
         
         # many many times...
-        for i in range(restarts) : 
+        for i in tqdm.tqdm(range(restarts)) : 
             # get a random solution
             solution = self.random_solution()
             cost = self.cost(solution)
@@ -334,6 +343,7 @@ class ProblemInstance :
         # print the output
         print("We found the solution : ", best_solution)
         print("Its solution has cost : ", best_cost)
+        print("It converges with speed : ", convergence_speed(cost_over_iterations))
             
         # draw the solution
         self.draw(best_solution)
@@ -397,6 +407,7 @@ class ProblemInstance :
         # print the output
         print("We found the solution : ", best_solution)
         print("Its solution has cost : ", best_cost)
+        print("It converges with speed : ", convergence_speed(cost_over_iterations))
              
         # draw the solution
         self.draw(best_solution)
@@ -406,7 +417,7 @@ class ProblemInstance :
         plt.plot(cost_over_iterations)
         plt.show()
 
-    def simulated_annealing(self, trials, P) : 
+    def simulated_annealing(self, trials, P, T_0) : 
         # keep track of the best solution
         best_solution = None
         best_cost = None
@@ -422,7 +433,7 @@ class ProblemInstance :
         for i in range(trials) : 
             # find all neighbours and their weighted probabilities
             neighbours = self.all_tweaks(solution)
-            weights = P([self.cost(neighbour) for neighbour in neighbours])
+            weights = P([self.cost(neighbour) for neighbour in neighbours], (T_0*(i+1)/trials))
 
             # select one at random with these weights
             solution = random.choices(neighbours, weights)[0]
@@ -439,6 +450,7 @@ class ProblemInstance :
         # print the output
         print("We found the solution : ", best_solution)
         print("Its solution has cost : ", best_cost)
+        print("It converges with speed : ", convergence_speed(cost_over_iterations))
         
         # draw the solution
         self.draw(best_solution)
@@ -447,3 +459,60 @@ class ProblemInstance :
         plt.figure()
         plt.plot(cost_over_iterations)
         plt.show()
+
+    def great_deluge(self, trials, delta_level) : 
+        # keep track of the best solution
+        best_solution = None
+        best_cost = None
+
+        # start with a random solution
+        solution = self.random_solution()
+        cost = self.cost(solution)
+
+        # initialise the water level
+        water_level = cost
+
+        # keep track of the cost over many iterations
+        cost_over_iterations = []
+
+         # many many times...
+        for i in range(trials) : 
+            # find a random neighbour and its cost
+            neighbour = self.random_tweak(solution)
+            neighbour_cost = self.cost(neighbour)
+
+            # if its an improvement or lower than the water level, move to it
+            if neighbour_cost < max(cost, water_level): 
+                solution = neighbour
+                cost = neighbour_cost
+                
+            # lower the water level
+            water_level -= delta_level
+
+            # keep track of the best solution
+            if best_cost == None or cost < best_cost : 
+                best_cost = cost
+                best_solution = solution
+
+            # add this cost to our graph
+            cost_over_iterations.append(best_cost)
+
+         # print the output
+        print("We found the solution : ", best_solution)
+        print("Its solution has cost : ", best_cost)
+        print("It converges with speed : ", convergence_speed(cost_over_iterations))
+        
+        # draw the solution
+        self.draw(best_solution)
+        
+        # draw the cost against iterations
+        plt.figure()
+        plt.plot(cost_over_iterations)
+        plt.show()
+
+p = ProblemInstance.from_file("prob2.txt")
+p.mutliple_basic_local_search(10000, 500)
+
+# We found the solution :  [[67, 33, 75, 93, 24, 50, 66, 16, 57, 23], [13, 62, 60, 72, 61, 46, 51, 78, 73, 20], [59, 90, 18, 92, 28, 25, 14, 34, 82, 74], [94, 55, 76, 84, 79, 53, 85, 98, 37, 11], [69, 45, 22, 48, 27, 49, 63, 58, 19, 31], [65, 86, 26, 35, 87, 41, 68, 38, 44], [12, 70, 42, 99, 96], [10, 77, 64, 83, 17, 32, 88], [15, 91, 30, 71, 43, 52, 47, 21, 80], [36, 89, 56, 40, 81, 39, 29, 97, 95, 54]]
+# Its solution has cost :  12.604199999999999
+# It converges with speed :  0.06404888599494012
