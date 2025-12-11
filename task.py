@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
-import tqdm
 import random
 import math
 import scipy
 import time
+import statistics
 
 
 def convergence_order(cost) : 
@@ -221,29 +221,7 @@ class ProblemInstance :
 
         # return the output
         return solution, cost, cost_over_iterations
-        
-    def multiple_basic_local_search(self, trials, restarts) : 
-        # keep track of the best solution
-        best_solution = None
-        best_cost = None
-        
-        # keep track of the cost over many iterations
-        cost_over_iterations = []
-        
-        # many many times...
-        for i in tqdm.tqdm(range(restarts)) : 
-            # perform basic local search
-            solution, cost, _ = self.basic_local_search(trials)
-                
-            # change the best solution if this solution is better
-            if best_cost == None or cost < best_cost :
-                best_solution = solution
-                best_cost = cost
-                
-            # add this cost to our graph
-            cost_over_iterations.append(best_cost)
-
-        return best_solution, best_cost, cost_over_iterations
+    
         
     def best_neighbour(self, start_from=None) : 
         # start with a random solution
@@ -279,30 +257,6 @@ class ProblemInstance :
             cost_over_iterations.append(cost)
             
         return solution, cost, cost_over_iterations
-
-    def multiple_best_neighbour(self, restarts) : 
-        # keep track of the best solution
-        best_solution = None
-        best_cost = None
-        
-        # keep track of the cost over many iterations
-        cost_over_iterations = []
-        
-        # many many times...
-        for i in range(restarts) : 
-            # perform best random neighbour
-            solution, cost, _ = self.best_neighbour()
-
-            # change the best solution if this solution is better
-            if best_cost == None or cost < best_cost :
-                best_solution = solution
-                best_cost = cost
-
-            # add this cost to our graph
-            cost_over_iterations.append(best_cost)
-            
-        # return the solution
-        return best_solution, best_cost, cost_over_iterations
         
     def tabu_search(self, trials) :
         # keep track of the best solution
@@ -431,7 +385,7 @@ class ProblemInstance :
 
         # return the output
         return best_solution, best_cost, cost_over_iterations
-    
+        
     def test_cost_speedup(self, trials) : 
         # do this the old fashioned way
         start = time.time_ns()
@@ -453,21 +407,60 @@ class ProblemInstance :
                 c =c+cost
         print("The new method takes ", (time.time_ns()-start)/trials, "ns")
 
-    def test_optimiser(self, optimiser) : 
-        # run the optimiser
+    def test_optimiser(self, optimisier, sample_size) : 
+        # keep track of the best solution
+        best_solution = None
+        best_cost = None
+
+        # keep track of the samples and time
+        cost_samples = []
+        speed_samples = []
         start_time = time.time_ns()
-        solution, cost, cost_over_iterations = optimiser()
+        
+        # keep track of the cost over many iterations
+        cost_over_iterations = []
+        
+        # many many times...
+        for i in range(sample_size) : 
+            # perform optimisier
+            time_for_iteration = time.time_ns()
+            solution, cost, cost_over_iterations_for_sample = optimisier()
+            time_for_iteration = time.time_ns() - time_for_iteration
+
+            # change the best solution if this solution is better
+            if best_cost == None or cost < best_cost :
+                best_solution = solution
+                best_cost = cost
+
+            # add this cost to our graph
+            cost_samples.append(cost)
+            speed_samples.append(convergence_speed(cost_over_iterations_for_sample, time_for_iteration))
+            cost_over_iterations.append(best_cost)
+
+
+        # calculate the time taken
         time_taken = time.time_ns() - start_time
 
-        # print some information about the solution
-        print("Found the solution   : ", solution)
-        print("With cost            : ", cost)
-        print("Time taken           : ", time_taken)
-        print("Convergence order    : ", convergence_order(cost_over_iterations))
-        print("Convergence speed    : ", convergence_speed(cost_over_iterations, time_taken))
+        # remove invalid speed samples
+        speed_samples = [speed for speed in speed_samples if speed != None]
 
-        # make a figure of the solution
-        self.draw(solution)
+        # print some information about the solution
+        print("Found the solution   : ", best_solution)
+        print("With cost            : ", best_cost)
+        print("Time taken           : ", time_taken)
+        
+        if sample_size > 1 : 
+            print("Convergence order    : ", convergence_order(cost_over_iterations))
+            print("Convergence speed    : ", convergence_speed(cost_over_iterations, time_taken))
+            print("Cost mean            : ", statistics.mean(cost_samples))
+            print("Cost variance        : ", statistics.variance(cost_samples))
+            print("Sample size          : ", sample_size)
+            print("Speed mean           : ", statistics.mean(speed_samples))
+            print("Speed variance       : ", statistics.variance(speed_samples))
+            print("Sample size          : ", len(speed_samples))
+
+        # make a figure of the best solution
+        self.draw(best_solution)
 
         # make a plot of the cost against the number of iterations
         plt.figure()
@@ -476,6 +469,79 @@ class ProblemInstance :
         plt.ylabel("Cost")
         plt.plot(cost_over_iterations)
         plt.show()
+
+        
+        if sample_size > 1 :
+            # make a boxplot of the cost samples 
+            plt.figure()
+            plt.title("Costs")
+            plt.boxplot(cost_samples)
+            plt.show()
+
+            # make a boxplot of the time samples
+            plt.figure()
+            plt.title("Convergence Speeds")
+            plt.boxplot(speed_samples)
+            plt.show()
+
+    def test_all(self, sample_size) : 
+        # keep track of all statistics
+        all_cost_samples = []
+        all_speed_samples = []
+        
+        # perform tests for all optimisers
+        optimisers = [
+            lambda : self.basic_local_search(10000),
+            lambda : self.best_neighbour(),
+            lambda : self.tabu_search(100),
+            lambda : self.simulated_annealing(100, 1000, 2),
+            lambda : self.great_deluge(10000, 0.1)
+        ]
+
+        for optimiser in optimisers : 
+            # keep track of the samples and time
+            cost_samples = []
+            speed_samples = []
+            
+            # many many times...
+            for i in range(sample_size) : 
+                # perform optimisier
+                time_for_iteration = time.time_ns()
+                solution, cost, cost_over_iterations_for_sample = optimiser()
+                time_for_iteration = time.time_ns() - time_for_iteration
+
+                # add this cost to our graph
+                cost_samples.append(cost)
+                speed_samples.append(convergence_speed(cost_over_iterations_for_sample, time_for_iteration))
+
+            # remove invalid speed samples
+            speed_samples = [speed for speed in speed_samples if speed != None]
+
+            # add samples to make picture
+            all_cost_samples.append(cost_samples)
+            all_speed_samples.append(speed_samples)
+
+            # print some information about the solution
+            print("-----~-----")
+            print("Best cost            : ", min(cost_samples))
+            print("Cost mean            : ", statistics.mean(cost_samples))
+            print("Cost variance        : ", statistics.variance(cost_samples))
+            print("Sample size          : ", sample_size)
+            print("Speed mean           : ", statistics.mean(speed_samples))
+            print("Speed variance       : ", statistics.variance(speed_samples))
+            print("Sample size          : ", len(speed_samples))
+
+        # draw boxplots
+        plt.figure()
+        plt.title("Costs")
+        plt.boxplot(all_cost_samples, positions=[i*100 for i in range(len(all_cost_samples))], widths=50)
+        plt.show()
+
+        plt.figure()
+        plt.title("Speeds")
+        plt.boxplot(all_speed_samples, positions=[i*100 for i in range(len(all_speed_samples))], widths=50)
+        plt.show()
+
 
     def test_simulated_annealing_sharpness(self, trials, T_0) : 
         plt.figure()
@@ -504,55 +570,52 @@ def main() :
             ]
         },
         {
-            "func" : lambda trials : problem.test_optimiser(lambda : problem.basic_local_search(trials)), 
+            "func" : lambda samples : problem.test_all(samples), 
+            "name" : "Test Everything", 
+            "args" : [
+                {"name":"Number of samples", "type":int}
+            ]
+        },
+        {
+            "func" : lambda trials, samples : problem.test_optimiser(lambda : problem.basic_local_search(trials), samples), 
             "name" : "Basic Local Search", 
             "args" : [
-                {"name":"Number of trials", "type":int}
-            ]
-        },
-        {
-            "func" : lambda trials, restarts : problem.test_optimiser(lambda : problem.multiple_basic_local_search(trials, restarts)), 
-            "name" : "Multiple Basic Local Search", 
-            "args" : [
                 {"name":"Number of trials", "type":int},
-                {"name":"Number of restarts", "type":int}
+                {"name":"Number of samples", "type":int}
             ]
         },
         {
-            "func" : lambda : problem.test_optimiser(problem.best_neighbour), 
+            "func" : lambda samples: problem.test_optimiser(problem.best_neighbour, samples), 
             "name" : "Best Neighbour", 
-            "args" : []
-        },
-        {
-            "func" : lambda restarts : problem.test_optimiser(lambda : problem.multiple_best_neighbour(restarts)), 
-            "name" : "Multiple Best Neighbour", 
             "args" : [
-                {"name":"Number of trials", "type":int},
-                {"name":"Number of restarts", "type":int}
+                {"name":"Number of samples", "type":int}
             ]
         },
         {
-            "func" : lambda trials: problem.test_optimiser(lambda : problem.tabu_search(trials)), 
+            "func" : lambda trials, samples: problem.test_optimiser(lambda : problem.tabu_search(trials), samples), 
             "name" : "Tabu Search", 
             "args" : [
                 {"name":"Number of trials", "type":int},
+                {"name":"Number of samples", "type":int}
             ]
         },
         {
-            "func" : lambda trials, t_0, alpha: problem.test_optimiser(lambda : problem.simulated_annealing(trials, t_0, alpha)), 
+            "func" : lambda trials, t_0, alpha, samples: problem.test_optimiser(lambda : problem.simulated_annealing(trials, t_0, alpha), samples), 
             "name" : "Simulated Annealing", 
             "args" : [
                 {"name":"Number of trials", "type":int},
                 {"name":"Initial temperature T_0", "type":float},
                 {"name":"Sharpness alpha", "type":float},
+                {"name":"Number of samples", "type":int}
             ]
         },
         {
-            "func" : lambda trials, delta_level: problem.test_optimiser(lambda : problem.great_deluge(trials, delta_level)), 
+            "func" : lambda trials, delta_level, samples: problem.test_optimiser(lambda : problem.great_deluge(trials, delta_level), samples), 
             "name" : "Great Deluge", 
             "args" : [
                 {"name":"Number of trials", "type":int},
                 {"name":"Change in water level per iteration", "type":float},
+                {"name":"Number of samples", "type":int}
             ]
         },
     ]
@@ -571,14 +634,3 @@ def main() :
 
 if __name__ == "__main__" : 
     main()
-
-# We found the solution :  [[67, 33, 75, 93, 24, 50, 66, 16, 57, 23], [13, 62, 60, 72, 61, 46, 51, 78, 73, 20], [59, 90, 18, 92, 28, 25, 14, 34, 82, 74], [94, 55, 76, 84, 79, 53, 85, 98, 37, 11], [69, 45, 22, 48, 27, 49, 63, 58, 19, 31], [65, 86, 26, 35, 87, 41, 68, 38, 44], [12, 70, 42, 99, 96], [10, 77, 64, 83, 17, 32, 88], [15, 91, 30, 71, 43, 52, 47, 21, 80], [36, 89, 56, 40, 81, 39, 29, 97, 95, 54]]
-# Its solution has cost :  12.604199999999999
-# It converges with speed :  0.06404888599494012
-
-# [[23, 20, 51, 84, 76, 55, 27, 48, 33, 67], [74, 82, 19, 72, 60, 62, 31, 13], [92, 18, 90, 59, 49, 63, 58, 44, 65], [94, 98, 85, 79, 53, 50, 24, 93, 37, 11], [54, 95, 25, 28, 14, 45, 34, 69], [86, 26, 35, 87, 16, 22, 66, 41, 68, 38], [75, 21, 47, 80, 52, 43, 71, 30, 91, 15], [97, 29, 39, 89, 56, 99, 96, 36, 77, 10], [12, 40, 61, 46, 78, 73, 57, 81, 70, 42], [32, 17, 64, 83, 88]]
-# With cost            :  10.967100000000007
-
-# [[57, 67, 40, 99, 96, 56, 89, 36, 97], [82, 35, 87, 16, 66, 22, 78, 51, 46, 72], [59, 90, 18, 92, 74, 63, 58, 44, 65], [11, 37, 98, 85, 53, 79, 84, 76, 55, 94], [69, 31, 13, 19, 61, 20, 73, 34, 60, 62], [86, 26, 68, 41, 49, 38], [21, 47, 80, 33, 48, 27, 50, 24, 93, 75], [10, 14, 45, 23, 81, 39, 77, 29], [42, 70, 12, 52, 71, 30, 43, 91, 15], [95, 25, 28, 83, 64, 17, 32, 88, 54]]
-
-# [[57, 67, 40, 99, 96, 56, 89], [82, 35, 87, 16, 66, 22, 78, 51, 46, 72], [59, 90, 18, 92, 74, 65, 44, 63, 58], [11, 37, 98, 85, 53, 79, 84, 76, 55, 94], [31, 13, 19, 61, 20, 73, 34, 60, 62, 69], [86, 26, 68, 41, 49, 38], [21, 47, 80, 33, 48, 50, 24, 93, 75, 27], [10, 14, 45, 23, 81, 39, 77, 29, 97], [42, 70, 12, 52, 43, 71, 30, 91, 15], [54, 28, 25, 36, 64, 83, 17, 32, 88, 95]]
